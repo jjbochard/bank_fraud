@@ -203,6 +203,21 @@ df["event_ts"] = pd.to_datetime(df["event_ts"])
 
 
 # %%
+date_parts = {
+    "day_event": "day",
+    "weekday_event": "weekday",
+    "month_event": "month",
+    "year_event": "year",
+    "hour_event": "hour",
+}
+
+dt = df["event_ts"].dt
+
+for column, attribute in date_parts.items():
+    df[column] = getattr(dt, attribute)
+
+
+# %%
 df.dtypes
 
 

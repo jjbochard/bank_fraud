@@ -17,13 +17,151 @@
 # # 1. Imports
 
 # %%
+from collections.abc import Sequence
+from typing import Literal, cast
+
 import matplotlib.pylab as plt
 import pandas as pd
 import seaborn as sns
+from IPython.display import Markdown
+from matplotlib.axes import Axes
+from matplotlib.container import BarContainer
+from pandas import DataFrame
 
 plt.style.use("dark_background")
-# pd.set_option('max_columns', 100)
-plt.rcParams["figure.figsize"] = (14, 9)
+plt.rcParams["figure.figsize"] = (14, 8)
+plt.rcParams["figure.constrained_layout.use"] = True
+
+FRAUD_LEGEND = ["Non fraudulent", "Fraudulent"]
+type NORMALIZE_TYPE = Literal["index", "columns"]
+
+
+# %%
+def build_graph(
+    ax: Axes,
+    title: str,
+    y_label: str | None = None,
+    legend_labels: Sequence[str] | None = None,
+) -> None:
+    """
+    Configure the appearance of a matplotlib chart.
+
+    Set the chart title, optionally updates the y-axis label, and
+    customize the legend by removing its title and replacing the legend
+    labels.
+
+    Args:
+        ax: Matplotlib axes containing the plot.
+        title: Chart title.
+        y_label: Label for the y-axis. If None, the current label is
+            left unchanged.
+        legend_labels: Labels used to replace the existing legend labels.
+            If None, the legend labels are not modified.
+    """
+
+    ax.set_title(title)
+
+    if y_label:
+        ax.set_ylabel(y_label)
+
+    legend = ax.get_legend()
+
+    if legend is None:
+        return
+
+    legend.set_title("")
+
+    if legend_labels:
+        for text, label in zip(legend.get_texts(), legend_labels):
+            text.set_text(label)
+
+
+def analyze_categorical(
+    df: DataFrame,
+    col: str,
+    title: str,
+    y_label: str | None,
+    legend_labels: Sequence[str] | None,
+    index_column_name: str,
+    table_1_name: str,
+    table_2_name: str,
+    table_3_name: str,
+    round_format: str = "%.02f%%",
+    is_bar_label: bool = True,
+) -> None:
+    """
+    Analyze and visualize a categorical feature.
+
+    Create a count plot showing the percentage distribution of a
+    categorical feature by fraud status.
+    Also display summary tables containing fraud counts and normalized
+    contingency tables.
+
+        Args:
+        df: Input dataframe.
+        col: Name of the categorical column to analyze.
+        title: Plot title.
+        y_label: Label for the y-axis.
+        legend_labels: Labels used to replace the default legend labels.
+        index_column_name: Name of the count column in the first summary table.
+        table_1_name: Heading displayed above the fraud-count table.
+        table_2_name: Heading displayed above the column-normalized
+        contingency table.
+        table_3_name: Heading displayed above the row-normalized
+        contingency table.
+        round_format: Format string used for bar labels.
+        is_bar_label: Whether to display values on top of the bars.
+    """
+    ax = sns.countplot(
+        data=df,
+        x=col,
+        stat="percent",
+        hue="is_fraud",
+        order=df[col].value_counts().index,
+    )
+    build_graph(
+        ax,
+        title,
+        y_label,
+        legend_labels,
+    )
+    if is_bar_label:
+        for container in ax.containers:
+            ax.bar_label(cast(BarContainer, container), fmt=round_format)
+
+    plt.show()
+
+    # Number of merchant category by fraud count
+    table_1 = (
+        df.astype({"is_fraud": "int"})
+        .groupby(col, observed=True)["is_fraud"]
+        .sum()
+        .value_counts()
+        .sort_index()
+        .rename_axis("number_of_frauds")
+        .reset_index(name=index_column_name)
+    )
+
+    display(
+        Markdown(f"## {table_1_name}"),
+        table_1,
+    )
+
+    map_normalize_type_title: dict[NORMALIZE_TYPE, str] = {
+        "columns": table_2_name,
+        "index": table_3_name,
+    }
+
+    for normalize_type, table_title in map_normalize_type_title.items():
+        display(
+            Markdown(f"## {table_title}"),
+            pd.crosstab(
+                df[col],
+                df["is_fraud"],
+                margins=True,
+                normalize=normalize_type,
+            ),
+        )
 
 
 # %%

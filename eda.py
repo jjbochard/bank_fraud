@@ -21,6 +21,7 @@ from collections.abc import Sequence
 from typing import Literal, cast
 
 import matplotlib.pylab as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from IPython.display import Markdown
@@ -568,3 +569,17 @@ analyze_categorical(
     table_2_name="Share of international type by fraud status",
     table_3_name="Share of fraud by international type",
 )
+
+# %% [markdown]
+# ## Multivariate analysis
+
+# %%
+cols = [f"v{i}" for i in range(1, 29)]
+cols.extend(["time", "amount"])
+corr = df[cols].corr()
+
+matrix = np.triu(corr)
+np.fill_diagonal(matrix, False)
+ax = sns.heatmap(corr, annot=True, cmap="coolwarm", fmt=".2f", mask=matrix)
+
+ax.tick_params("y", rotation=0)

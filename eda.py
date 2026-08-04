@@ -222,7 +222,7 @@ df.dtypes
 
 
 # %%
-df.columns = map(str.lower, df.columns)
+df.columns = df.columns.str.lower()
 df = df.rename(columns={"class": "is_fraud"})
 
 

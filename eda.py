@@ -277,24 +277,30 @@ display(df.head(5))
 # # 4. Feature understanding
 
 # %% [markdown]
+#
+
+# %% [markdown]
 # ## Univariate analysis
 
 # %% [markdown]
 # ### Is_fraud
 
 # %%
-fig, ax = plt.subplots(layout="constrained")
+ax = sns.countplot(data=df, x="is_fraud", stat="percent", legend=True)
 
-sns.countplot(data=df, x="is_fraud", stat="percent", ax=ax)
+build_graph(
+    ax,
+    "Distribution of fraudulent and non fraudulent transactions",
+    "Share of all transactions (%)",
+)
 
 ax.set_xticks([0, 1])
 ax.set_xticklabels(["Not fraud", "Fraud"])
 
-for container in ax.containers:
-    ax.bar_label(container, fmt="%.2f%%")
 
-ax.set_ylabel("Percentage")
-ax.set_title("Distribution of Fraudulent and Non-Fraudulent Transactions")
+for container in ax.containers:
+    ax.bar_label(cast(BarContainer, container), fmt="%.2f%%")
+
 plt.show()
 
 
@@ -304,20 +310,25 @@ plt.show()
 # %%
 col_to_plot = "time"
 
-fig = sns.histplot(
+ax = sns.histplot(
     df,
     x=col_to_plot,
     stat="density",
     hue="is_fraud",
+    hue_order=[0, 1],
     kde=True,
     bins=15,
     common_norm=False,
     legend=True,
 )
 
-fig.set_title(f"Distribution of transactions {col_to_plot}")
-fig.set_xlabel(f"{col_to_plot.capitalize()}")
-fig.set_ylabel("Density")
+build_graph(
+    ax,
+    f"Distribution of fraudulent and non fraudulent {col_to_plot}",
+    None,
+    FRAUD_LEGEND,
+)
+
 plt.show()
 
 
@@ -331,20 +342,23 @@ plt.show()
 cols = range(1, 4)
 
 for col in cols:
-    fig = sns.histplot(
+    ax = sns.histplot(
         df,
         x=f"v{col}",
         stat="density",
         hue="is_fraud",
         kde=True,
-        # bins=15,
         common_norm=False,
         legend=True,
     )
+    build_graph(
+        ax,
+        f"Distribution of Fraudulent and Non Fraudulent v{col}",
+        None,
+        FRAUD_LEGEND,
+    )
 
-    fig.set_title(f"Distribution of v{col}")
-    fig.set_xlabel(f"v{col}")
-    fig.set_ylabel("Density")
+    ax.set_xlabel(f"v{col}")
     plt.show()
 
 
@@ -354,7 +368,7 @@ for col in cols:
 # %%
 col_to_plot = "amount"
 
-fig = sns.histplot(
+ax = sns.histplot(
     df,
     x=col_to_plot,
     stat="density",
@@ -363,11 +377,13 @@ fig = sns.histplot(
     common_norm=False,
     legend=True,
 )
-
-fig.set_xlim(0, 250)
-fig.set_title(f"Distribution of transactions {col_to_plot} lees than 100")
-fig.set_xlabel(f"{col_to_plot.capitalize()}")
-fig.set_ylabel("Density")
+build_graph(
+    ax,
+    f"Distribution of transactions {col_to_plot} lees than 250",
+    None,
+    FRAUD_LEGEND,
+)
+ax.set_xlim(0, 250)
 plt.show()
 
 
@@ -375,25 +391,24 @@ plt.show()
 # ### card_id
 
 # %%
-# Top 20 use card_id
 n = 20
 col = "card_id"
-top_n = df[col].value_counts().sort_values(ascending=False).head(n)
+top_n = df[col].value_counts().sort_values(ascending=False).head(n).to_frame()
 
-fig, ax = plt.subplots(layout="constrained")
-sns.barplot(top_n)
+ax = sns.barplot(top_n, x=col, y="count")
+build_graph(
+    ax,
+    f"Top {n} most frequent card ID",
+)
 
 ax.tick_params("x", rotation=45)
-ax.set_ylabel("Count")
-ax.set_title(f"Top {n} most frequent card IDs")
 plt.show()
 
 
-# %%
 # Number of card id by fraud count
-(
+card_id_by_fraud_count = (
     df.astype({"is_fraud": "int"})
-    .groupby("card_id")["is_fraud"]
+    .groupby(col)["is_fraud"]
     .sum()
     .value_counts()
     .sort_index()
@@ -401,31 +416,30 @@ plt.show()
     .reset_index(name="number_of_cards")
 )
 
+display(Markdown("## Number of card ID by fraud count"), card_id_by_fraud_count)
+
 
 # %% [markdown]
 # ### merchant_id
 
 # %%
-# Top 20 merchant_id
 n = 20
 col = "merchant_id"
-top_n = df[col].value_counts().sort_values(ascending=False).head(n)
+top_n = df[col].value_counts().sort_values(ascending=False).head(n).to_frame()
 
-fig, ax = plt.subplots(layout="constrained")
-sns.barplot(top_n)
-for container in ax.containers:
-    ax.bar_label(container)
+ax = sns.barplot(top_n, x=col, y="count")
+build_graph(
+    ax,
+    f"Top {n} merchant ID by number of transactions",
+)
+
 ax.tick_params("x", rotation=45)
-ax.set_ylabel("Count")
-ax.set_title(f"Top {n} merchants by number of transactions")
 plt.show()
 
-
-# %%
 # Number of merchant id by fraud count
-(
+merchant_id_by_fraud_count = (
     df.astype({"is_fraud": "int"})
-    .groupby("merchant_id")["is_fraud"]
+    .groupby(col)["is_fraud"]
     .sum()
     .value_counts()
     .sort_index()
@@ -433,40 +447,22 @@ plt.show()
     .reset_index(name="number_of_merchants")
 )
 
+display(Markdown("## Number of merchant ID by fraud count"), merchant_id_by_fraud_count)
 
 # %% [markdown]
 # ### merchant_category_code
 
 # %%
-fig, ax = plt.subplots(layout="constrained")
-
-sns.countplot(
-    data=df,
-    x="merchant_category_code",
-    stat="percent",
-    hue="is_fraud",
-    order=df["merchant_category_code"].value_counts().index,
-    ax=ax,
-)
-
-for container in ax.containers:
-    ax.bar_label(container, fmt="%.2f%%")
-
-ax.set_ylabel("Percentage")
-ax.set_title("Merchant category by number of transactions")
-plt.show()
-
-
-# %%
-# Number of merchant category by fraud count
-(
-    df.astype({"is_fraud": "int"})
-    .groupby("merchant_category_code")["is_fraud"]
-    .sum()
-    .value_counts()
-    .sort_index()
-    .rename_axis("number_of_frauds")
-    .reset_index(name="number_of_merchant_category_code")
+analyze_categorical(
+    df=df,
+    col="merchant_category_code",
+    title="Share of Fraudulent and Non-Fraudulent Transactions by Merchant Category Code",
+    y_label="Share of all transactions (%)",
+    legend_labels=FRAUD_LEGEND,
+    index_column_name="number_of_merchant_category_code",
+    table_1_name="Number of merchant category code by fraud count",
+    table_2_name="Share of categories by fraud status",
+    table_3_name="Share of fraud by merchant category code",
 )
 
 
@@ -474,34 +470,17 @@ plt.show()
 # ### merchant_country
 
 # %%
-fig, ax = plt.subplots(figsize=(15, 9), layout="constrained")
-sns.countplot(
-    data=df,
-    x="merchant_country",
-    stat="percent",
-    hue="is_fraud",
-    order=df["merchant_country"].value_counts().index,
-    ax=ax,
-)
-
-for container in ax.containers:
-    ax.bar_label(container, fmt="%.0f%%")
-
-ax.set_ylabel("Percentage")
-ax.set_title("Merchant country by number of transactions")
-plt.show()
-
-
-# %%
-# Number of merchant country by fraud count
-(
-    df.astype({"is_fraud": "int"})
-    .groupby("merchant_country")["is_fraud"]
-    .sum()
-    .value_counts()
-    .sort_index()
-    .rename_axis("number_of_frauds")
-    .reset_index(name="number_of_merchant_country")
+analyze_categorical(
+    df=df,
+    col="merchant_country",
+    title="Share of fraudulent and non fraudulent transactions by merchant country",
+    y_label="Share of all transactions (%)",
+    legend_labels=FRAUD_LEGEND,
+    index_column_name="number_of_merchant_country",
+    table_1_name="Number of merchant country by fraud count",
+    table_2_name="Share of merchant country by fraud status",
+    table_3_name="Share of fraud by merchant country",
+    is_bar_label=False,
 )
 
 
@@ -509,36 +488,17 @@ plt.show()
 # ### currency
 
 # %%
-fig, ax = plt.subplots(figsize=(15, 9), layout="constrained")
-sns.countplot(
-    data=df,
-    x="currency",
-    stat="percent",
-    hue="is_fraud",
-    order=df["currency"].value_counts().index,
-    ax=ax,
-)
-
-for container in ax.containers:
-    ax.bar_label(container, fmt="%.2f%%")
-
-ax.set(
-    ylabel="Percentage",
-    title="Currency by number of transactions",
-)
-plt.show()
-
-
-# %%
-# Number of currency by fraud count
-(
-    df.astype({"is_fraud": "int"})
-    .groupby("currency")["is_fraud"]
-    .sum()
-    .value_counts()
-    .sort_index()
-    .rename_axis("number_of_frauds")
-    .reset_index(name="number_of_currency")
+analyze_categorical(
+    df=df,
+    col="currency",
+    title="Share of fraudulent and non fraudulent transactions by currency",
+    y_label="Share of all transactions (%)",
+    legend_labels=FRAUD_LEGEND,
+    index_column_name="number_of_currency",
+    table_1_name="Number of currency by fraud count",
+    table_2_name="Share of currency by fraud status",
+    table_3_name="Share of fraud by currency",
+    # is_bar_label=False,
 )
 
 
@@ -546,36 +506,16 @@ plt.show()
 # ### device_type
 
 # %%
-fig, ax = plt.subplots(figsize=(15, 9), layout="constrained")
-sns.countplot(
-    data=df,
-    x="device_type",
-    stat="percent",
-    hue="is_fraud",
-    order=df["device_type"].value_counts().index,
-    ax=ax,
-)
-
-for container in ax.containers:
-    ax.bar_label(container, fmt="%.2f%%")
-
-ax.set(
-    ylabel="Percentage",
-    title="Type of device by number of transactions",
-)
-plt.show()
-
-
-# %%
-# Number of device type by fraud count
-(
-    df.astype({"is_fraud": "int"})
-    .groupby("device_type")["is_fraud"]
-    .sum()
-    .value_counts()
-    .sort_index()
-    .rename_axis("number_of_frauds")
-    .reset_index(name="number_of_device_type")
+analyze_categorical(
+    df=df,
+    col="device_type",
+    title="Share of fraudulent and non fraudulent transactions by device_type",
+    y_label="Share of all transactions (%)",
+    legend_labels=FRAUD_LEGEND,
+    index_column_name="number_of_device_type",
+    table_1_name="Number of device type by fraud count",
+    table_2_name="Share of device type by fraud status",
+    table_3_name="Share of fraud by device type",
 )
 
 
@@ -583,36 +523,16 @@ plt.show()
 # ### entry_mode
 
 # %%
-fig, ax = plt.subplots(figsize=(15, 9), layout="constrained")
-sns.countplot(
-    data=df,
-    x="entry_mode",
-    stat="percent",
-    hue="is_fraud",
-    order=df["entry_mode"].value_counts().index,
-    ax=ax,
-)
-
-for container in ax.containers:
-    ax.bar_label(container, fmt="%.2f%%")
-
-ax.set(
-    ylabel="Percentage",
-    title="Entry mode by number of transactions",
-)
-plt.show()
-
-
-# %%
-# Number of entry mode by fraud count
-(
-    df.astype({"is_fraud": "int"})
-    .groupby("entry_mode")["is_fraud"]
-    .sum()
-    .value_counts()
-    .sort_index()
-    .rename_axis("number_of_frauds")
-    .reset_index(name="number_of_entry_mode")
+analyze_categorical(
+    df=df,
+    col="entry_mode",
+    title="Share of fraudulent and non fraudulent transactions by entry mode",
+    y_label="Share of all transactions (%)",
+    legend_labels=FRAUD_LEGEND,
+    index_column_name="number_of_entry_mode",
+    table_1_name="Number of entry mode by fraud count",
+    table_2_name="Share of entry mode by fraud status",
+    table_3_name="Share of fraud by entry mode",
 )
 
 
@@ -620,36 +540,16 @@ plt.show()
 # ### channel
 
 # %%
-fig, ax = plt.subplots(figsize=(15, 9), layout="constrained")
-sns.countplot(
-    data=df,
-    x="channel",
-    stat="percent",
-    hue="is_fraud",
-    order=df["channel"].value_counts().index,
-    ax=ax,
-)
-
-for container in ax.containers:
-    ax.bar_label(container, fmt="%.2f%%")
-
-ax.set(
-    ylabel="Percentage",
-    title="Channel by number of transactions",
-)
-plt.show()
-
-
-# %%
-# Number of channel by fraud count
-(
-    df.astype({"is_fraud": "int"})
-    .groupby("channel")["is_fraud"]
-    .sum()
-    .value_counts()
-    .sort_index()
-    .rename_axis("number_of_frauds")
-    .reset_index(name="number_of_channel")
+analyze_categorical(
+    df=df,
+    col="channel",
+    title="Share of fraudulent and non fraudulent transactions by channel",
+    y_label="Share of all transactions (%)",
+    legend_labels=FRAUD_LEGEND,
+    index_column_name="number_of_channel",
+    table_1_name="Number of channel by fraud count",
+    table_2_name="Share of channel by fraud status",
+    table_3_name="Share of fraud by channel",
 )
 
 
@@ -657,34 +557,14 @@ plt.show()
 # ### is_international
 
 # %%
-fig, ax = plt.subplots(figsize=(15, 9), layout="constrained")
-sns.countplot(
-    data=df,
-    x="is_international",
-    stat="percent",
-    hue="is_fraud",
-    order=df["is_international"].value_counts().index,
-    ax=ax,
-)
-
-for container in ax.containers:
-    ax.bar_label(container, fmt="%.2f%%")
-
-ax.set(
-    ylabel="Percentage",
-    title="Number of international transactions",
-)
-plt.show()
-
-
-# %%
-# Number of international transactions by fraud count
-(
-    df.astype({"is_fraud": "int"})
-    .groupby("is_international")["is_fraud"]
-    .sum()
-    .value_counts()
-    .sort_index()
-    .rename_axis("number_of_frauds")
-    .reset_index(name="number_of_is_international")
+analyze_categorical(
+    df=df,
+    col="is_international",
+    title="Share of fraudulent and non fraudulent transactions by international type",
+    y_label="Share of all transactions (%)",
+    legend_labels=FRAUD_LEGEND,
+    index_column_name="number_of_international_type",
+    table_1_name="Number of international type by fraud count",
+    table_2_name="Share of international type by fraud status",
+    table_3_name="Share of fraud by international type",
 )
